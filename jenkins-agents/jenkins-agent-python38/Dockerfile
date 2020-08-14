@@ -17,6 +17,7 @@ RUN INSTALL_PKGS=" \
       httpd24 httpd24-httpd-devel httpd24-mod_ssl httpd24-mod_auth_kerb httpd24-mod_ldap \
       httpd24-mod_session atlas-devel gcc-gfortran libffi-devel libtool-ltdl enchant" && \
     DISABLE_REPOS=--disablerepo='rhel-*' && \
+    yum -y uninstall sqlite3 ; \
     yum -y localinstall https://kojipkgs.fedoraproject.org//packages/sqlite/3.28.0/1.fc31/x86_64/sqlite-3.28.0-1.fc31.x86_64.rpm https://kojipkgs.fedoraproject.org//packages/sqlite/3.28.0/1.fc31/x86_64/sqlite-devel-3.28.0-1.fc31.x86_64.rpm ; \
     yum -y localinstall http://mirror.centos.org/centos/7/os/x86_64/Packages/libtirpc-0.2.4-0.16.el7.x86_64.rpm && \
     yum $DISABLE_REPOS install -y yum-utils && \
