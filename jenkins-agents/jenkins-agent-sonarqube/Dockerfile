@@ -11,7 +11,7 @@ COPY ubi.repo mongodb-org-3.6.repo /etc/yum.repos.d/
 
 RUN DISABLE_REPOS=--disablerepo='rhel-*' && \
     set -x && \
-    wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONARQUBE_SCANNER_VERSION-linux.zip && \
+    curl https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONARQUBE_SCANNER_VERSION-linux.zip -o sonar-scanner-cli-$SONARQUBE_SCANNER_VERSION-linux.zip && \
     unzip sonar-scanner-cli-$SONARQUBE_SCANNER_VERSION-linux.zip && \
     rm sonar-scanner-cli-$SONARQUBE_SCANNER_VERSION-linux.zip && \
     mv /sonar-scanner-$SONARQUBE_SCANNER_VERSION-linux /sonarqube-scanner
