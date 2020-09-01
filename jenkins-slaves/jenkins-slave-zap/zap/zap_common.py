@@ -218,7 +218,7 @@ def inc_fail_rules(config_dict, key, inc_extra):
 def dump_log_file(cid):
     traceback.print_exc()
     # Unexpected issue - dump the zap.log file
-    if running_in_docker():
+    if running_in_container():
         zap_log = '/zap/zap.out'
         if os.path.isfile(zap_log):
             with open(zap_log, 'r') as zlog:
@@ -237,8 +237,8 @@ def cp_to_docker(cid, file, dir):
     logging.debug (subprocess.check_output(params))
 
 
-def running_in_docker():
-    return os.path.exists('/.dockerenv')
+def running_in_container():
+    return os.path.exists('/.dockerenv') or os.getenv('KUBERNETES_SERVICE_HOST') is not None
 
 
 def add_zap_options(params, zap_options):
@@ -476,7 +476,7 @@ def get_latest_zap_client_version():
 
 def check_zap_client_version():
     # No need to check ZAP Python API client while running in Docker
-    if running_in_docker():
+    if running_in_container():
         return
 
     if 'pkg_resources' not in globals():  # import failed
