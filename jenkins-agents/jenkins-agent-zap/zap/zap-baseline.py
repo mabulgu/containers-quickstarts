@@ -195,7 +195,7 @@ def main(argv):
         usage()
         sys.exit(3)
 
-    if running_in_docker():
+    if running_in_container():
         base_dir = '/zap/wrk/'
         if config_file or generate or report_html or report_xml or progress_file or context_file:
             # Check directory has been mounted
@@ -232,7 +232,7 @@ def main(argv):
                 if issue["state"] == "inprogress":
                     in_progress_issues[issue["id"]] = issue
 
-    if running_in_docker():
+    if running_in_container():
         try:
             params = [
                       '-config', 'spider.maxDuration=' + str(mins),
@@ -411,7 +411,7 @@ def main(argv):
         logging.warning('Unexpected error: ' + str(sys.exc_info()[0]))
         dump_log_file(cid)
 
-    if not running_in_docker():
+    if not running_in_container():
         stop_docker(cid)
 
     if fail_count > 0:

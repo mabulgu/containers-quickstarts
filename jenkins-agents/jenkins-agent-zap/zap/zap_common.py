@@ -126,7 +126,7 @@ def inc_fail_rules(config_dict, key, inc_extra):
 def dump_log_file(cid):
     traceback.print_exc()
     # Unexpected issue - dump the zap.log file
-    if running_in_docker():
+    if running_in_container():
         zap_log = '/zap/zap.out'
         if os.path.isfile(zap_log):
             with open(zap_log, 'r') as zlog:
@@ -145,8 +145,8 @@ def cp_to_docker(cid, file, dir):
     logging.debug (subprocess.check_output(params))
 
 
-def running_in_docker():
-    return os.path.exists('/.dockerenv')
+def running_in_container():
+    return os.path.exists('/.dockerenv') or os.getenv('KUBERNETES_SERVICE_HOST') is not None
 
 
 def start_zap(port, extra_zap_params):
