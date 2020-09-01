@@ -216,13 +216,13 @@ def main(argv):
         sys.exit(3)
 
     if running_in_container():
-        base_dir = os.environ['REPORT_DIR']
-        # if config_file or generate or report_html or report_xml or report_json or progress_file or context_file:
-        #     # Check directory has been mounted
-        #     if not os.path.exists(base_dir):
-        #         logging.warning('A file based option has been specified but the directory JENKINS REPORT_DIR is not mounted')
-        #         usage()
-        #         sys.exit(3)
+        base_dir = '/zap/wrk/'
+        if config_file or generate or report_html or report_xml or progress_file or context_file:
+            # Check directory has been mounted
+            if not os.path.exists(base_dir):
+                logging.warning('A file based option has been specified but the directory \'/zap/wrk\' is not mounted ')
+                usage()
+                sys.exit(3)
 
     # Choose a random 'ephemeral' port and check its available if it wasn't specified with -P option
     if port == 0:
@@ -310,7 +310,7 @@ def main(argv):
 
         if context_file:
             # handle the context file, cant use base_dir as it might not have been set up
-            zap_import_context(zap, os.environ['REPORT_DIR'] + os.path.basename(context_file))
+            zap_import_context(zap, '/zap/wrk/' + os.path.basename(context_file))
 
         zap_access_target(zap, target)
 
