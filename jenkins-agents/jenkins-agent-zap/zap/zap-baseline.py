@@ -58,8 +58,8 @@ config_msg = {}
 out_of_scope_dict = {}
 min_level = 0
 
-# Pscan rules that aren't really relevant, e.g. the examples rules in the alpha set
-ignore_scan_rules = ['-1', '50003', '60000', '60001']
+# Pscan rules that aren't really relevant, eg the examples rules in the alpha set
+blacklist = ['-1', '50003', '60000', '60001']
 
 # Pscan rules that are being addressed
 in_progress_issues = {}
@@ -71,7 +71,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 def usage():
     print('Usage: zap-baseline.py -t <target> [options]')
-    print('    -t target         target URL including the protocol, e.g. https://www.example.com')
+    print('    -t target         target URL including the protocol, eg https://www.example.com')
     print('Options:')
     print('    -h                print this help message')
     print('    -c config_file    config file to use to INFO, IGNORE or FAIL warnings')
@@ -97,7 +97,7 @@ def usage():
     print('    -z zap_options    ZAP command line options e.g. -z "-config aaa=bbb -config ccc=ddd"')
     print('    --hook            path to python file that define your custom hooks')
     print('')
-    print('For more details see https://www.zaproxy.org/docs/docker/baseline-scan/')
+    print('For more details see https://github.com/zaproxy/zaproxy/wiki/ZAP-Baseline-Scan')
 
 
 def main(argv):
@@ -216,13 +216,13 @@ def main(argv):
         sys.exit(3)
 
     if running_in_container():
-        base_dir = '/zap/wrk/'
-        if config_file or generate or report_html or report_xml or report_json or report_md or progress_file or context_file:
-            # Check directory has been mounted
-            if not os.path.exists(base_dir):
-                logging.warning('A file based option has been specified but the directory \'/zap/wrk\' is not mounted ')
-                usage()
-                sys.exit(3)
+        base_dir = os.environ['REPORT_DIR']
+        # if config_file or generate or report_html or report_xml or report_json or progress_file or context_file:
+        #     # Check directory has been mounted
+        #     if not os.path.exists(base_dir):
+        #         logging.warning('A file based option has been specified but the directory JENKINS REPORT_DIR is not mounted')
+        #         usage()
+        #         sys.exit(3)
 
     # Choose a random 'ephemeral' port and check its available if it wasn't specified with -P option
     if port == 0:
@@ -310,7 +310,7 @@ def main(argv):
 
         if context_file:
             # handle the context file, cant use base_dir as it might not have been set up
-            zap_import_context(zap, '/zap/wrk/' + os.path.basename(context_file))
+            zap_import_context(zap, os.environ['REPORT_DIR'] + os.path.basename(context_file))
 
         zap_access_target(zap, target)
 
@@ -342,13 +342,13 @@ def main(argv):
             if detailed_output:
                 print('Total of ' + str(num_urls) + ' URLs')
 
-            alert_dict = zap_get_alerts(zap, target, ignore_scan_rules, out_of_scope_dict)
+            alert_dict = zap_get_alerts(zap, target, blacklist, out_of_scope_dict)
 
             all_rules = zap.pscan.scanners
             all_dict = {}
             for rule in all_rules:
                 plugin_id = rule.get('id')
-                if plugin_id in ignore_scan_rules:
+                if plugin_id in blacklist:
                     continue
                 all_dict[plugin_id] = rule.get('name')
 
@@ -366,7 +366,7 @@ def main(argv):
             pass_dict = {}
             for rule in all_rules:
                 plugin_id = rule.get('id')
-                if plugin_id in ignore_scan_rules:
+                if plugin_id in blacklist:
                     continue
                 if (plugin_id not in alert_dict):
                     pass_dict[plugin_id] = rule.get('name')
@@ -378,19 +378,19 @@ def main(argv):
             pass_count = len(pass_dict)
 
             # print out the ignored rules
-            ignore_count, not_used = print_rules(zap, alert_dict, 'IGNORE', config_dict, config_msg, min_level,
+            ignore_count, not_used = print_rules(alert_dict, 'IGNORE', config_dict, config_msg, min_level,
                 inc_ignore_rules, True, detailed_output, {})
 
             # print out the info rules
-            info_count, not_used = print_rules(zap, alert_dict, 'INFO', config_dict, config_msg, min_level,
+            info_count, not_used = print_rules(alert_dict, 'INFO', config_dict, config_msg, min_level,
                 inc_info_rules, info_unspecified, detailed_output, in_progress_issues)
 
             # print out the warning rules
-            warn_count, warn_inprog_count = print_rules(zap, alert_dict, 'WARN', config_dict, config_msg, min_level,
+            warn_count, warn_inprog_count = print_rules(alert_dict, 'WARN', config_dict, config_msg, min_level,
                 inc_warn_rules, not info_unspecified, detailed_output, in_progress_issues)
 
             # print out the failing rules
-            fail_count, fail_inprog_count = print_rules(zap, alert_dict, 'FAIL', config_dict, config_msg, min_level,
+            fail_count, fail_inprog_count = print_rules(alert_dict, 'FAIL', config_dict, config_msg, min_level,
                 inc_fail_rules, True, detailed_output, in_progress_issues)
 
             if report_html:

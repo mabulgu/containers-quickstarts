@@ -61,8 +61,8 @@ config_msg = {}
 out_of_scope_dict = {}
 min_level = 0
 
-# Scan rules that aren't really relevant, e.g. the examples rules in the alpha set
-ignore_scan_rules = ['-1', '50003', '60000', '60001', '60100', '60101']
+# Scan rules that aren't really relevant, eg the examples rules in the alpha set
+blacklist = ['-1', '50003', '60000', '60001']
 
 # Scan rules that are being addressed
 in_progress_issues = {}
@@ -74,7 +74,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 def usage():
     print('Usage: zap-full-scan.py -t <target> [options]')
-    print('    -t target         target URL including the protocol, e.g. https://www.example.com')
+    print('    -t target         target URL including the protocol, eg https://www.example.com')
     print('Options:')
     print('    -h                print this help message')
     print('    -c config_file    config file to use to INFO, IGNORE or FAIL warnings')
@@ -90,7 +90,6 @@ def usage():
     print('    -P                specify listen port')
     print('    -D                delay in seconds to wait for passive scanning ')
     print('    -i                default rules not in the config file to INFO')
-    print('    -I                do not return failure on warning')
     print('    -j                use the Ajax spider in addition to the traditional one')
     print('    -l level          minimum level to show: PASS, IGNORE, INFO, WARN or FAIL, use with -s to hide example URLs')
     print('    -n context_file   context file which will be loaded prior to scanning the target')
@@ -100,7 +99,7 @@ def usage():
     print('    -z zap_options    ZAP command line options e.g. -z "-config aaa=bbb -config ccc=ddd"')
     print('    --hook            path to python file that define your custom hooks')
     print('')
-    print('For more details see https://www.zaproxy.org/docs/docker/full-scan/')
+    print('For more details see https://github.com/zaproxy/zaproxy/wiki/ZAP-Full-Scan')
 
 
 def main(argv):
@@ -129,7 +128,6 @@ def main(argv):
     zap_options = ''
     delay = 0
     timeout = 0
-    ignore_warn = False
     hook_file = None
 
     pass_count = 0
@@ -141,7 +139,7 @@ def main(argv):
     fail_inprog_count = 0
 
     try:
-        opts, args = getopt.getopt(argv, "t:c:u:g:m:n:r:J:w:x:l:hdaijp:sz:P:D:T:I", ["hook="])
+        opts, args = getopt.getopt(argv, "t:c:u:g:m:n:r:J:w:x:l:hdaijp:sz:P:D:T:", ["hook="])
     except getopt.GetoptError as exc:
         logging.warning('Invalid option ' + exc.opt + ' : ' + exc.msg)
         usage()
@@ -184,8 +182,6 @@ def main(argv):
             zap_alpha = True
         elif opt == '-i':
             info_unspecified = True
-        elif opt == '-I':
-            ignore_warn = True
         elif opt == '-j':
             ajax = True
         elif opt == '-l':
@@ -221,7 +217,7 @@ def main(argv):
 
     if running_in_container():
         base_dir = '/zap/wrk/'
-        if config_file or generate or report_html or report_xml or report_json or report_md or progress_file or context_file:
+        if config_file or generate or report_html or report_xml or report_json or progress_file or context_file:
             # Check directory has been mounted
             if not os.path.exists(base_dir):
                 logging.warning('A file based option has been specified but the directory \'/zap/wrk\' is not mounted ')
@@ -366,19 +362,19 @@ def main(argv):
             if detailed_output:
                 print('Total of ' + str(num_urls) + ' URLs')
 
-            alert_dict = zap_get_alerts(zap, target, ignore_scan_rules, out_of_scope_dict)
+            alert_dict = zap_get_alerts(zap, target, blacklist, out_of_scope_dict)
 
             all_ascan_rules = zap.ascan.scanners('Default Policy')
             all_pscan_rules = zap.pscan.scanners
             all_dict = {}
             for rule in all_pscan_rules:
                 plugin_id = rule.get('id')
-                if plugin_id in ignore_scan_rules:
+                if plugin_id in blacklist:
                     continue
                 all_dict[plugin_id] = rule.get('name') + ' - Passive/' + rule.get('quality')
             for rule in all_ascan_rules:
                 plugin_id = rule.get('id')
-                if plugin_id in ignore_scan_rules:
+                if plugin_id in blacklist:
                     continue
                 all_dict[plugin_id] = rule.get('name') + ' - Active/' + rule.get('quality')
 
@@ -390,26 +386,26 @@ def main(argv):
                     f.write('# Active scan rules set to IGNORE will not be run which will speed up the scan\n')
                     f.write('# Only the rule identifiers are used - the names are just for info\n')
                     f.write('# You can add your own messages to each rule by appending them after a tab on each line.\n')
-                    for key, rule in sorted(all_dict.items()):
+                    for key, rule in sorted(all_dict.iteritems()):
                         f.write(key + '\tWARN\t(' + rule + ')\n')
 
             # print out the passing rules
             pass_dict = {}
             for rule in all_pscan_rules:
                 plugin_id = rule.get('id')
-                if plugin_id in ignore_scan_rules:
+                if plugin_id in blacklist:
                     continue
-                if plugin_id not in alert_dict:
+                if (not alert_dict.has_key(plugin_id)):
                     pass_dict[plugin_id] = rule.get('name')
             for rule in all_ascan_rules:
                 plugin_id = rule.get('id')
-                if plugin_id in ignore_scan_rules:
+                if plugin_id in blacklist:
                     continue
-                if plugin_id not in alert_dict and not(plugin_id in config_dict and config_dict[plugin_id] == 'IGNORE'):
+                if not alert_dict.has_key(plugin_id) and not(config_dict.has_key(plugin_id) and config_dict[plugin_id] == 'IGNORE'):
                     pass_dict[plugin_id] = rule.get('name')
 
             if min_level == zap_conf_lvls.index("PASS") and detailed_output:
-                for key, rule in sorted(pass_dict.items()):
+                for key, rule in sorted(pass_dict.iteritems()):
                     print('PASS: ' + rule + ' [' + key + ']')
 
             pass_count = len(pass_dict)
@@ -418,25 +414,25 @@ def main(argv):
                 # print out the ignored ascan rules(there will be no alerts for these as they were not run)
                 for rule in all_ascan_rules:
                     plugin_id = rule.get('id')
-                    if plugin_id in ignore_scan_rules:
+                    if plugin_id in blacklist:
                         continue
-                    if plugin_id in config_dict and config_dict[plugin_id] == 'IGNORE':
+                    if config_dict.has_key(plugin_id) and config_dict[plugin_id] == 'IGNORE':
                         print('SKIP: ' + rule.get('name') + ' [' + plugin_id + ']')
 
             # print out the ignored rules
-            ignore_count, not_used = print_rules(zap, alert_dict, 'IGNORE', config_dict, config_msg, min_level,
+            ignore_count, not_used = print_rules(alert_dict, 'IGNORE', config_dict, config_msg, min_level,
                 inc_ignore_rules, True, detailed_output, {})
 
             # print out the info rules
-            info_count, not_used = print_rules(zap, alert_dict, 'INFO', config_dict, config_msg, min_level,
+            info_count, not_used = print_rules(alert_dict, 'INFO', config_dict, config_msg, min_level,
                 inc_info_rules, info_unspecified, detailed_output, in_progress_issues)
 
             # print out the warning rules
-            warn_count, warn_inprog_count = print_rules(zap, alert_dict, 'WARN', config_dict, config_msg, min_level,
+            warn_count, warn_inprog_count = print_rules(alert_dict, 'WARN', config_dict, config_msg, min_level,
                 inc_warn_rules, not info_unspecified, detailed_output, in_progress_issues)
 
             # print out the failing rules
-            fail_count, fail_inprog_count = print_rules(zap, alert_dict, 'FAIL', config_dict, config_msg, min_level,
+            fail_count, fail_inprog_count = print_rules(alert_dict, 'FAIL', config_dict, config_msg, min_level,
                 inc_fail_rules, True, detailed_output, in_progress_issues)
 
             if report_html:
@@ -473,9 +469,6 @@ def main(argv):
             logging.warning('I/O error: ' + str(e))
         dump_log_file(cid)
 
-    except ScanNotStartedException:
-        dump_log_file(cid)
-
     except:
         print("ERROR " + str(sys.exc_info()[0]))
         logging.warning('Unexpected error: ' + str(sys.exc_info()[0]))
@@ -488,7 +481,7 @@ def main(argv):
 
     if fail_count > 0:
         sys.exit(1)
-    elif (not ignore_warn) and warn_count > 0:
+    elif warn_count > 0:
         sys.exit(2)
     elif pass_count > 0:
         sys.exit(0)
