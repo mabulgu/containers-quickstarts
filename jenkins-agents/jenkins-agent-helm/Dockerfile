@@ -1,4 +1,5 @@
-FROM quay.io/openshift/origin-jenkins-agent-base:4.6
+#FROM quay.io/openshift/origin-jenkins-agent-base:4.6
+FROM image-registry.openshift-image-registry.svc:5000/openshift/jenkins-agent-base:latest
 
 ARG VERSION=3.2.0
 ARG YQ_VERSION=3.3.0
@@ -30,16 +31,6 @@ RUN curl -sL -o /tmp/chart-testing.tar.gz https://github.com/helm/chart-testing/
     mkdir ${HOME}/.ct && \
     mv /tmp/chart-testing/etc/chart_schema.yaml /tmp/chart-testing/etc/lintconf.yaml ${HOME}/.ct/ && \
     rm -rf /tmp/chart-testing
-
-## Install git, python 3.8, yamale, and yamllint
-RUN INSTALL_PKGS="git python38 python38-pip" && \
-    rm -f /etc/yum.repos.d/*.repo && \
-    mv /tmp/ubi8.repo /etc/yum.repos.d/ubi8.repo && \
-    dnf -y --setopt=tsflags=nodocs install $INSTALL_PKGS && \
-    dnf -y clean all && \
-    alternatives --set python3 /usr/bin/python3.8 && \
-    python3 -m pip install yamale==3.0.1 && \
-    python3 -m pip install yamllint==1.24.1
 
 ## Install oc and kubectl
 RUN curl -s https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_CLIENT_VERSION}/openshift-client-linux-${OPENSHIFT_CLIENT_VERSION}.tar.gz \
