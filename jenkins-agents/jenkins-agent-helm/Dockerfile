@@ -1,4 +1,3 @@
-#FROM quay.io/openshift/origin-jenkins-agent-base:4.6
 FROM image-registry.openshift-image-registry.svc:5000/openshift/jenkins-agent-base:latest
 
 ARG VERSION=3.2.0
